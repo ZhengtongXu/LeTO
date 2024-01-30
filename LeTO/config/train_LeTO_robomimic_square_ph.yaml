@@ -1,0 +1,155 @@
+shape_meta: &shape_meta
+  # acceptable types: rgb, low_dim
+  obs:
+    agentview_image:
+      shape: [3, 84, 84]
+      type: rgb
+    robot0_eye_in_hand_image:
+      shape: [3, 84, 84]
+      type: rgb
+    robot0_eef_pos:
+      shape: [3]
+      # type default: low_dim
+    robot0_eef_quat:
+      shape: [4]
+    robot0_gripper_qpos:
+      shape: [2]
+  action: 
+    shape: [7]
+
+task_name: &task_name square
+dataset_type: &dataset_type ph
+dataset_path: &dataset_path data/robomimic/datasets/${task_name}/${dataset_type}/image.hdf5
+abs_action: &abs_action False
+
+env_runner:
+  _target_: LeTO.env_runner.LeTO_robomimic_image_runner.LetoRobomimicImageRunner
+  dataset_path: *dataset_path
+  shape_meta: *shape_meta
+  # costs 1GB per env
+  n_train: 3
+  n_train_vis: 2
+  train_start_idx: 0
+  n_test: 25
+  n_test_vis: 4
+  test_start_seed: 100
+  # use python's eval function as resolver, single-quoted string as argument
+  max_steps: ${eval:'600 if "${dataset_type}" == "mh" else 500'}
+  n_obs_steps: ${n_obs_steps}
+  n_action_steps: ${n_action_steps}
+  render_obs_key: 'agentview_image'
+  fps: 10
+  crf: 22
+  abs_action: *abs_action
+  tqdm_interval_sec: 1.0
+  n_envs: 28
+# evaluation at this config requires a 16 core 64GB instance.
+
+dataset:
+  _target_: diffusion_policy.dataset.robomimic_replay_image_dataset.RobomimicReplayImageDataset
+  shape_meta: *shape_meta
+  dataset_path: *dataset_path
+  horizon: ${horizon}
+  pad_before: ${eval:'${n_obs_steps}-1+${n_latency_steps}'}
+  pad_after: ${eval:'${n_action_steps}-1'}
+  n_obs_steps: ${dataset_obs_steps}
+  abs_action: *abs_action
+  rotation_rep: 'rotation_6d'
+  use_legacy_normalizer: False
+  use_cache: True
+  seed: 42
+  val_ratio: 0.02
+
+
+name: train_LeTO_image
+_target_: LeTO.workspace.train_LeTO_workspace.TrainLetoWorksapce
+
+
+exp_name: "default"
+
+horizon: &horizon 17
+n_obs_steps: 1
+n_latency_steps: 0
+dataset_obs_steps: *horizon
+keypoint_visible_rate: 1.0
+pred_steps: 6
+samp_steps: 12
+n_action_steps: 1
+test_type: ph
+smooth_weight: 1
+policy:
+  _target_: LeTO.policy.LeTO_policy.LetoPolicy
+  shape_meta: ${shape_meta}
+  obs_type: image
+  # oc.select resolver: key, default
+  task_name: ${oc.select:task_name,square}
+  dataset_type: ${oc.select:dataset_type,ph}
+  crop_shape: [76,76]
+  pred_steps: ${pred_steps}
+  n_action_steps: ${n_action_steps}
+  samp_steps: ${samp_steps}
+  smooth_weight: ${smooth_weight}
+
+dataloader:
+  batch_size: 64
+  num_workers: 16
+  shuffle: True
+  pin_memory: True
+  persistent_workers: False
+
+val_dataloader:
+  batch_size: 64
+  num_workers: 16
+  shuffle: False
+  pin_memory: True
+  persistent_workers: False
+
+training:
+  device: "cuda:0"
+  seed: 42
+  debug: False
+  resume: True
+  # optimization
+  num_epochs: 100000
+  # training loop control
+  # in epochs
+  rollout_every: 20
+  checkpoint_every: 1
+  val_every: 5
+  sample_every: 5
+  # steps per epoch
+  max_train_steps: null
+  max_val_steps: null
+  # misc
+  tqdm_interval_sec: 1.0
+
+logging:
+  project: LeTO_test
+  resume: True
+  mode: online
+  name: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}_${test_type}_LeTO
+  tags: ["${name}", "${task_name}", "${exp_name}"]
+  id: null
+  group: null
+
+checkpoint:
+  topk:
+    monitor_key: test_mean_score
+    mode: max
+    k: 5
+    format_str: 'epoch={epoch:04d}-test_mean_score={test_mean_score:.3f}.ckpt'
+  save_last_ckpt: True
+  save_last_snapshot: False
+
+multi_run:
+  run_dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  wandb_name_base: ${now:%Y.%m.%d-%H.%M.%S}_${name}_${task_name}
+
+hydra:
+  job:
+    override_dirname: ${name}
+  run:
+    dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+  sweep:
+    dir: data/outputs/${now:%Y.%m.%d}/${now:%H.%M.%S}_${name}_${task_name}
+    subdir: ${hydra.job.num}
