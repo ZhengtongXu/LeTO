@@ -3,7 +3,7 @@
 
 _Purdue University_
 
-[Summary Video](https://drive.google.com/file/d/1-Ty2JRg8COrHM_cl0vaj-xSGzjnZOg7L/view?usp=sharing)
+[arXiv](https://arxiv.org/abs/2401.17500) | [Summary Video](https://drive.google.com/file/d/1-Ty2JRg8COrHM_cl0vaj-xSGzjnZOg7L/view?usp=sharing)
 
 ---
 LeTO uniquely integrates a differentiable trajectory optimization layer for visuomotor policy learning, enabling generating actions in a safe and controlled fashion.
