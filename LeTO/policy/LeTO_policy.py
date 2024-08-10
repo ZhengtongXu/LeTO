@@ -18,10 +18,11 @@ class LetoPolicy(BaseImagePolicy):
             task_name='square',
             dataset_type='ph',
             crop_shape=(76,76),
-            pred_steps = 1,
+            pred_steps=1,
             n_action_steps=1,
-            samp_steps = 1,
+            samp_steps=1,
             smooth_weight=1,
+            constraints=0.1,
         ):
         super().__init__()
 
@@ -88,6 +89,7 @@ class LetoPolicy(BaseImagePolicy):
                 pred_horizon=pred_steps,
                 samp_horizon=samp_steps,
                 smooth_weight=smooth_weight,
+                constraints = constraints,
             )
 
         self.model = model

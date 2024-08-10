@@ -42,6 +42,7 @@ class LeTO_RNN_Base(Module):
         single_ac_dim = 7,
         device = 'cuda:0',
         smooth_weight = 1,
+        constraints = 0.1,
     ):
         """
         Args:
@@ -83,6 +84,7 @@ class LeTO_RNN_Base(Module):
         self.single_ac_dim = single_ac_dim
         act_dim = single_ac_dim
         n_pred = pred_horizon
+        self.constraints = constraints
         self.L = Parame(torch.tril(torch.rand(act_dim*n_pred, act_dim*n_pred).to(self.device)))
 
         self.eps = 1e-4
@@ -106,7 +108,7 @@ class LeTO_RNN_Base(Module):
                 A_sat = A_sat[torch.arange(A_sat.size(0))!= (n_pred-i-1)*act_dim - 1]
             for i in range (n_pred):
                 A_vel = A_vel[torch.arange(A_vel.size(0))!= (n_pred-i)*act_dim - 1]
-            self.b_sat_single = torch.tensor([0.1,0.1,0.1,0.1,0.1,0.1],requires_grad = False).resize(act_dim-1,1)
+            self.b_sat_single = torch.tensor([constraints,constraints,constraints,constraints,constraints,constraints],requires_grad = False).resize(act_dim-1,1)
             self.b_vel_single = torch.tensor([1,1,1,1,1,1],requires_grad = False).resize(act_dim-1,1)
         else:
             assert (act_dim == 7)
@@ -277,8 +279,8 @@ class LeTO_RNN_Base(Module):
         A_past_action_batch = self.A_past_action.unsqueeze(0).expand(n_batch, self.A_past_action.shape[0], self.ouput_dim).to(inputs.device)
 
         if self.single_ac_dim == 7:
-            b_past_action_batch_upper = past_action[:,:,0:6].reshape(n_batch, 6) + 0.1*torch.ones(n_batch, 6,requires_grad = False).to(inputs.device) 
-            b_past_action_batch_lower = -1*past_action[:,:,0:6].reshape(n_batch, 6) + 0.1*torch.ones(n_batch, 6,requires_grad = False).to(inputs.device)
+            b_past_action_batch_upper = past_action[:,:,0:6].reshape(n_batch, 6) + self.constraints*torch.ones(n_batch, 6,requires_grad = False).to(inputs.device) 
+            b_past_action_batch_lower = -1*past_action[:,:,0:6].reshape(n_batch, 6) + self.constraints*torch.ones(n_batch, 6,requires_grad = False).to(inputs.device)
 
 
         b_past_action_batch = torch.cat((b_past_action_batch_upper,b_past_action_batch_lower),1)   
@@ -351,6 +353,7 @@ class LeTO_RNN_MLP(Module):
         single_ac_dim = 7,
         device = 'cuda:0',
         smooth_weight = 1,
+        constraints = 0.1,
     ):
         """
         Args:
@@ -451,6 +454,7 @@ class LeTO_RNN_MLP(Module):
             single_ac_dim = single_ac_dim,
             device = device,
             smooth_weight = smooth_weight,
+            constraints = constraints,
         )
 
     def get_rnn_init_state(self, batch_size, device):
@@ -607,6 +611,7 @@ class LeTORNNActorNetwork(LeTO_RNN_MLP):
         single_ac_dim = 7,
         device = 'cuda:0',
         smooth_weight = 1,
+        constraints = 0.1,
     ):
         """
         Args:
@@ -679,7 +684,8 @@ class LeTORNNActorNetwork(LeTO_RNN_MLP):
             pred_horizon = pred_horizon,
             single_ac_dim = single_ac_dim,
             device = device,
-            smooth_weight   = smooth_weight,
+            smooth_weight = smooth_weight,
+            constraints = constraints,
         )
 
     def _get_output_shapes(self):
@@ -777,6 +783,7 @@ class LeTO(BC):
         pred_horizon,
         samp_horizon,
         smooth_weight,
+        constraints,
     ):
         """
         Args:
@@ -807,6 +814,7 @@ class LeTO(BC):
         self.pred_horizon = pred_horizon
         self.samp_horizon = samp_horizon
         self.smooth_weight = smooth_weight
+        self.constraints = constraints
 
         self.nets = nn.ModuleDict()
         self._create_shapes(obs_config.modalities, obs_key_shapes)
@@ -830,6 +838,7 @@ class LeTO(BC):
             single_ac_dim = self.single_ac_dim,
             device=self.device,
             smooth_weight = self.smooth_weight,
+            constraints = self.constraints,
         )
 
         self._rnn_hidden_state = None
