@@ -1,6 +1,6 @@
 # LeTO: Learning Constrained Visuomotor Policy with Differentiable Trajectory Optimization 
-### Zhengtong Xu, [Yu She](https://www.purduemars.com/home)
-
+### [Zhengtong Xu](https://zhengtongxu.github.io/website/), [Yu She](https://www.purduemars.com/home)
+### IEEE Transactions on Automation Science and Engineering (T-ASE), 2024 ###
 _Purdue University_
 
 [arXiv](https://arxiv.org/abs/2401.17500) | [Summary Video](https://drive.google.com/file/d/1-Ty2JRg8COrHM_cl0vaj-xSGzjnZOg7L/view?usp=sharing)
